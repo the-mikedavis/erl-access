@@ -28,3 +28,10 @@ get_and_update_in_map_test() ->
     ?assertEqual(c, Current),
     ?assertEqual(#{a => #{b => f}, d => e}, Updated),
     ok.
+
+get_in_with_strings_and_binaries_test() ->
+    Data = #{"a" => #{b => #{"c" => d}}},
+    ?assertEqual(d, access:get_in(Data, ["a", b, "c"])),
+    Data1 = #{<<"a">> => #{b => #{<<"c">> => d}}},
+    ?assertEqual(d, access:get_in(Data1, [<<"a">>, b, <<"c">>])),
+    ok.
