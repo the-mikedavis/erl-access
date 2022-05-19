@@ -61,6 +61,7 @@
          %% functions for building patterns
          all/0,
          filter/1,
+         at/1,
          element/1]).
 
 -export_type([pattern/0,
@@ -320,3 +321,38 @@ element(Index) ->
         (_Op, Data, _Next) ->
             erlang:error(io_lib:format("access:elem/1 expected a tuple, got: ~p", [Data]))
     end.
+
+-spec at(integer()) -> access_fun(Data :: list(), CurrentValue :: term()).
+%% @doc Returns a function that accesses the element at `Index' (zero-indexed)
+%% of a list.
+
+at(Index) when is_integer(Index) ->
+    fun(Op, Data, Next) -> at(Op, Data, Index, Next) end.
+
+at(get, Data, Index, Next) when is_list(Data) ->
+    Value = lists:nth(Index + 1, Data),
+    Next(Value);
+at(get_and_update, Data, Index, Next) when is_list(Data) ->
+    get_and_update_at(Data, Index, Next, [], fun() -> ?NIL end);
+at(_Op, Data, _Index, _Next) ->
+    erlang:error(io_lib:format("access:at/1 expected a list, got: ~p", [Data])).
+
+get_and_update_at([Head | Rest], 0, Next, Updates, _DefaultFun) ->
+    case Next(Head) of
+        {Get, Update} ->
+            {Get, lists:reverse([Update | Updates], Rest)};
+        pop ->
+            {Head, lists:reverse(Updates, Rest)}
+    end;
+get_and_update_at([_ | _] = List, Index, Next, Updates, DefaultFun) when Index < 0 ->
+    ListLength = length(List),
+    case ListLength + Index >= 0 of
+        true ->
+            get_and_update_at(List, ListLength + Index, Next, Updates, DefaultFun);
+        false ->
+            {DefaultFun(), List}
+    end;
+get_and_update_at([Head | Rest], Index, Next, Updates, DefaultFun) when Index > 0 ->
+    get_and_update_at(Rest, Index - 1, Next, [Head | Updates], DefaultFun);
+get_and_update_at([], _Index, _Next, Updates, DefaultFun) ->
+    {DefaultFun(), lists:reverse(Updates)}.
