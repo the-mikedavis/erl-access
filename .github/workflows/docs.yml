@@ -1,0 +1,41 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docs:
+    name: Publish Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "24.0"
+          rebar3-version: "3.18.0"
+
+      - name: Compile
+        run: rebar3 compile
+
+      - name: Generate Docs
+        run: rebar3 ex_doc
+
+      - name: Checkout gh-pages branch to ./gh-pages directory
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: ./gh-pages
+
+      - run: mv ./doc ./gh-pages/docs
+
+      - name: Publish Docs to gh-pages
+        run: |
+          cd ./gh-pages
+          git config --local user.email "$(git log --format='%ae' HEAD^!)"
+          git config --local user.name "$(git log --format='%an' HEAD^!)"
+          git add docs
+          git commit -m "generate docs" || true
+          git push
