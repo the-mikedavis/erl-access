@@ -225,14 +225,18 @@ pop_in_data(Data, [Key | Tail]) ->
 pop(Map, Key) when is_map(Map) ->
     %% This is a polyfill of `Map.pop/2'
     case maps:take(Key, Map) of
-        {Value, Map2} -> {Value, Map2};
-        false         -> {?NIL, Map}
+        {Value, Map2} ->
+            {Value, Map2};
+        error ->
+            {?NIL, Map}
     end;
 pop(List, Key) when is_list(List) ->
     %% This is a polyfill of `Keyword.pop/2'
     case lists:keytake(Key, 1, List) of
-        {value, Value, List2} -> {Value, List2};
-        false                 -> {?NIL, List}
+        {value, Value, List2} ->
+            {Value, List2};
+        false ->
+            {?NIL, List}
     end;
 pop(?NIL, Key) ->
     erlang:error(
