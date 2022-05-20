@@ -8,11 +8,11 @@
 %% in Erlang. For example, let's reach into a nested map:
 %%
 %% ```
-%% Data = #{foo => #{bar => baz}},
-%% #{foo := Bar} = Data,
-%% #{bar := Baz} = Bar,
-%% Baz.
-%% %%=> baz
+%% > Data = #{foo => #{bar => baz}},
+%%   #{foo := Bar} = Data,
+%%   #{bar := Baz} = Bar,
+%%   Baz.
+%% baz
 %% '''
 %%
 %% `access' provides functions that operate on deeply nested structures using
@@ -20,15 +20,15 @@
 %% be rewritten like so:
 %%
 %% ```
-%% access:get_in(Data, [foo, bar]).
-%% %%=> baz
+%% > access:get_in(Data, [foo, bar]).
+%% baz
 %% '''
 %%
 %% Or to put a value into the structure:
 %%
 %% ```
-%% access:put_in(Data, [foo, bar], quiz).
-%% %%=> #{foo => #{bar => quiz}}
+%% > access:put_in(Data, [foo, bar], quiz).
+%% #{foo => #{bar => quiz}}
 %% '''
 %%
 %% Access patterns are especially useful when nested data contains lists.
@@ -37,20 +37,18 @@
 %% {@link all/0}.
 %%
 %% ```
-%% Data = #{elements => [#{a => b}, #{c => d}, #{a => e}, #{c => d}]}.
-%% access:get_in(Data, [elements, access:filter(fun(M) -> is_map_key(a, M) end), a]).
-%% %%=> [b,e]
-%% access:put_in(Data, [elements, access:all(), f], g).
-%% %%=> #{elements =>
-%% %%=>    [#{a => b,f => g},
-%% %%=>     #{c => d,f => g},
-%% %%=>     #{a => e,f => g},
-%% %%=>     #{c => d,f => g}]}
+%% > Data = #{elements => [#{a => b}, #{c => d}, #{a => e}, #{c => d}]},
+%%   access:get_in(Data, [elements, access:filter(fun(M) -> is_map_key(a, M) end), a]).
+%% [b,e]
+%% > access:put_in(Data, [elements, access:all(), f], g).
+%% #{elements =>
+%%    [#{a => b,f => g},
+%%     #{c => d,f => g},
+%%     #{a => e,f => g},
+%%     #{c => d,f => g}]}
 %% '''
 
 -module(access).
-
--define(NIL, nil).
 
 -export([%% functions that operate on structures
          get_in/2,
@@ -75,7 +73,7 @@
 
 -type container() :: [{atom(), any()}] | map().
 -type any_container() :: any().
--type nil_container() :: ?NIL.
+-type nil_container() :: nil.
 
 -type structure() :: container() | any_container() | nil_container().
 
@@ -92,7 +90,7 @@
 -spec get_in(structure(), pattern()) -> term().
 %% @doc Gets a value within a data structure
 
-get_in(?NIL, [_ | _]) -> ?NIL;
+get_in(nil, [_ | _]) -> nil;
 get_in(Data, [H]) when is_function(H) ->
     H(get, Data, fun(D) -> D end);
 get_in(Data, [H | T]) when is_function(H) ->
@@ -106,7 +104,7 @@ get_in(Data, [H | T]) ->
 %% @doc Puts a value into a nested structure
 
 put_in(Data, [_ | _] = Keys, Value) ->
-    element(2, get_and_update_in(Data, Keys, fun (_) -> {?NIL, Value} end)).
+    element(2, get_and_update_in(Data, Keys, fun (_) -> {nil, Value} end)).
 
 -spec update_in(structure(), pattern(), fun((term()) -> term())) -> term().
 %% @doc Updates a value within a nested structure
@@ -117,11 +115,11 @@ update_in(Data, [_ | _] = Keys, UpdateFun) ->
       get_and_update_in(
         Data,
         Keys,
-        fun (Value) -> {?NIL, UpdateFun(Value)} end)).
+        fun (Value) -> {nil, UpdateFun(Value)} end)).
 
 -spec get_and_update_in(structure(), pattern(), Fun) ->
     {CurrentValue, structure()} when
-        Fun :: fun((term() | ?NIL) -> {CurrentValue, NewValue | pop}),
+        Fun :: fun((term() | nil) -> {CurrentValue, NewValue | pop}),
         CurrentValue :: term(),
         NewValue :: term().
 %% @doc Gets the current value within a structure and returns a structure with
@@ -139,13 +137,13 @@ get_and_update_in(Data, [Head | Tail], Fun) when is_function(Fun, 1) ->
 -spec pop_in(container(), pattern()) -> term().
 %% @doc Pops a value from a nested structure
 
-pop_in(?NIL, [Key | _]) ->
-    erlang:error(io_lib:format("could not pop key ~p on a ?NIL value", [Key]));
+pop_in(nil, [Key | _]) ->
+    erlang:error(io_lib:format("could not pop key ~p on a nil value", [Key]));
 pop_in(Data, [_ | _] = Keys) ->
     pop_in_data(Data, Keys).
 
 get(Container, Key) ->
-    get(Container, Key, ?NIL).
+    get(Container, Key, nil).
 
 get(Map, Key, Default) when is_map(Map) ->
     maps:get(Key, Map, Default);
@@ -159,11 +157,11 @@ get(List, Key, _Default) when is_list(List) ->
       io_lib:format(
         "the access calls for proplists expect "
         "the key to be an atom, got: ~p", [Key]));
-get(?NIL, _Key, Default) ->
+get(nil, _Key, Default) ->
     Default.
 
 get_and_update(Map, Key, Fun) when is_map(Map) ->
-    Current = maps:get(Key, Map, ?NIL),
+    Current = maps:get(Key, Map, nil),
     case Fun(Current) of
         {Get, Update} ->
             {Get, maps:put(Key, Update, Map)};
@@ -178,10 +176,10 @@ get_and_update(Map, Key, Fun) when is_map(Map) ->
     end;
 get_and_update(List, Key, Fun) when is_list(List) ->
     get_and_update_list(List, [], Key, Fun);
-get_and_update(?NIL, Key, _Fun) ->
+get_and_update(nil, Key, _Fun) ->
     erlang:error(
       io_lib:format(
-        "could not put/update key ~p on a ?NIL value", [Key])).
+        "could not put/update key ~p on a nil value", [Key])).
 
 %% This is a polyfill of `Keyword.get_and_update/3'
 get_and_update_list([{Key, Current} | Tail], Acc, Key, Fun) ->
@@ -200,11 +198,11 @@ get_and_update_list([{Key, Current} | Tail], Acc, Key, Fun) ->
 get_and_update_list([{_, _} = Head | Tail], Acc, Key, Fun) ->
     get_and_update_list(Tail, [Head | Acc], Key, Fun);
 get_and_update_list([], Acc, Key, Fun) ->
-    case Fun(?NIL) of
+    case Fun(nil) of
         {Get, Update} ->
             {Get, [{Key, Update} | lists:reverse(Acc)]};
         pop ->
-            {?NIL, lists:reverse(Acc)};
+            {nil, lists:reverse(Acc)};
         Other ->
             erlang:error(
               io_lib:format(
@@ -213,7 +211,7 @@ get_and_update_list([], Acc, Key, Fun) ->
                 [Other]))
     end.
 
-pop_in_data(?NIL, [_ | _]) ->
+pop_in_data(nil, [_ | _]) ->
     pop;
 pop_in_data(Data, [Fun]) when is_function(Fun) ->
     Fun(get_and_update, Data, fun(_) -> pop end);
@@ -228,7 +226,7 @@ pop(Map, Key) when is_map(Map) ->
         {Value, Map2} ->
             {Value, Map2};
         error ->
-            {?NIL, Map}
+            {nil, Map}
     end;
 pop(List, Key) when is_list(List) ->
     %% This is a polyfill of `Keyword.pop/2'
@@ -236,12 +234,12 @@ pop(List, Key) when is_list(List) ->
         {value, Value, List2} ->
             {Value, List2};
         false ->
-            {?NIL, List}
+            {nil, List}
     end;
-pop(?NIL, Key) ->
+pop(nil, Key) ->
     erlang:error(
       io_lib:format(
-        "could not pop key ~p on a ?NIL value", [Key])).
+        "could not pop key ~p on a nil value", [Key])).
 
 -spec all() -> access_fun(Data :: list(), CurrentValue :: list()).
 %% @doc Returns a function that accessses all elements in a list
@@ -302,12 +300,12 @@ get_and_update_filter([], _Predicate, _Next, Gets, Updates) ->
 %% @doc Returns a function that accesses the element at the given index in a
 %% tuple.
 %%
-%% == Examples ==
+%% === Examples ===
 %%
 %% ```
-%% Data = #{a => {b, b, b}},
-%% access:put_in(Data, [a, access:element(1)], e).
-%% %%=> #{a => {c, b, b}}
+%% > Data = #{a => {b, b, b}},
+%%   access:put_in(Data, [a, access:element(1)], e).
+%% #{a => {c, b, b}}
 %% '''
 
 element(Index) ->
@@ -337,7 +335,7 @@ at(get, Data, Index, Next) when is_list(Data) ->
     Value = lists:nth(Index + 1, Data),
     Next(Value);
 at(get_and_update, Data, Index, Next) when is_list(Data) ->
-    get_and_update_at(Data, Index, Next, [], fun() -> ?NIL end);
+    get_and_update_at(Data, Index, Next, [], fun() -> nil end);
 at(_Op, Data, _Index, _Next) ->
     erlang:error(io_lib:format("access:at/1 expected a list, got: ~p", [Data])).
 
